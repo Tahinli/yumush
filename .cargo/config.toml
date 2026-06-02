@@ -1,2 +1,26 @@
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    "-C", "target-cpu=native",
+    "-C", "link-arg=-Wl,--gc-sections",
+    "-C", "link-arg=-Wl,-O2",
+]
+
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C", "target-cpu=native",
+    "-C", "link-arg=-Wl,-dead_strip",
+]
+
+[target.x86_64-apple-darwin]
+rustflags = [
+    "-C", "target-cpu=native",
+    "-C", "link-arg=-Wl,-dead_strip",
+]
+
 [target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "target-feature=+crt-static"]
+rustflags = [
+    "-C", "target-feature=+crt-static",
+    "-C", "target-cpu=native",
+    "-C", "link-arg=/OPT:REF",
+    "-C", "link-arg=/OPT:ICF"
+]
