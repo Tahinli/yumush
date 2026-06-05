@@ -1,7 +1,11 @@
-pub mod bastion;
+pub mod community;
 pub mod constant;
 pub mod error;
+pub mod event;
 pub mod message;
 pub mod network;
+pub mod request;
+pub mod response;
 pub mod user;
+pub mod utils;
 pub mod validate;

@@ -1,8 +1,10 @@
 use std::fmt::Display;
 
-use crate::constant::{MAXIMUM_BASTION_NAME_LENGTH, MINIMUM_BASTION_NAME_LENGTH};
+use bitcode::{Decode, Encode};
 
-#[derive(Debug)]
+use crate::constant::{MAXIMUM_COMMUNITY_NAME_LENGTH, MINIMUM_COMMUNITY_NAME_LENGTH};
+
+#[derive(Debug, Clone, Encode, Decode)]
 pub enum Error {
     MaximumLength(usize),
     MinimumLength(usize),
@@ -17,12 +19,12 @@ impl Display for Error {
             Error::MaximumLength(length) => write!(
                 f,
                 "More than maximum length({}) is provided({})",
-                MAXIMUM_BASTION_NAME_LENGTH, length
+                MAXIMUM_COMMUNITY_NAME_LENGTH, length
             ),
             Error::MinimumLength(length) => write!(
                 f,
                 "Less than minimum length({}) is provided({})",
-                MINIMUM_BASTION_NAME_LENGTH, length
+                MINIMUM_COMMUNITY_NAME_LENGTH, length
             ),
             Error::ASCII => write!(f, "Given input is not ASCII compatible"),
         }

@@ -1,54 +1,42 @@
-use std::sync::Arc;
+use bitcode::{Decode, Encode};
 
-use crate::{bastion::Bastion, error::Error, user::User, validate::validate_message};
-
-#[derive(Debug)]
-struct MessageInner {
-    id: String,
-    user: User,
-    bastion: Bastion,
-    message: String,
-}
-
-impl MessageInner {
-    pub fn new(user: User, bastion: Bastion, message: impl ToString) -> Result<Self, Error> {
-        let message = message.to_string();
-        validate_message(&message)?;
-
-        Ok(Self {
-            id: "replace".to_string(),
-            user,
-            bastion,
-            message,
-        })
-    }
-
-    pub fn get_user(&self) -> &User {
-        &self.user
-    }
-
-    pub fn get_message(&self) -> &String {
-        &self.message
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct Message {
-    message: Arc<MessageInner>,
+    message_id: String,
+    user_id: String,
+    community_id: String,
+    message_body: String,
 }
 
 impl Message {
-    pub fn new(user: User, bastion: Bastion, message: impl ToString) -> Result<Self, Error> {
-        Ok(Self {
-            message: MessageInner::new(user, bastion, message)?.into(),
-        })
+    #[cfg(feature = "server")]
+    pub fn new(message_id: &str, user_id: &str, community_id: &str, message_body: &str) -> Self {
+        let message_id = message_id.to_string();
+        let user_id = user_id.to_string();
+        let community_id = community_id.to_string();
+        let message_body = message_body.to_string();
+
+        Self {
+            message_id,
+            user_id,
+            community_id,
+            message_body,
+        }
     }
 
-    pub fn get_user(&self) -> &User {
-        self.message.get_user()
+    pub fn get_id(&self) -> &str {
+        &self.message_id
     }
 
-    pub fn get_message(&self) -> &String {
-        self.message.get_message()
+    pub fn get_community_id(&self) -> &str {
+        &self.community_id
+    }
+
+    pub fn get_user_id(&self) -> &str {
+        &self.user_id
+    }
+
+    pub fn get_message_body(&self) -> &str {
+        &self.message_body
     }
 }

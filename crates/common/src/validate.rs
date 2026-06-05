@@ -1,11 +1,11 @@
 use crate::constant::{
-    MAXIMUM_BASTION_NAME_LENGTH, MAXIMUM_MESSAGE_LENGTH, MAXIMUM_USERNAME_LENGTH,
-    MINIMUM_BASTION_NAME_LENGTH, MINIMUM_MESSAGE_LENGTH, MINIMUM_USERNAME_LENGTH,
+    MAXIMUM_COMMUNITY_NAME_LENGTH, MAXIMUM_MESSAGE_LENGTH, MAXIMUM_USERNAME_LENGTH,
+    MINIMUM_COMMUNITY_NAME_LENGTH, MINIMUM_MESSAGE_LENGTH, MINIMUM_USERNAME_LENGTH,
 };
 
 type UserError = crate::error::user::Error;
 type MessageError = crate::error::message::Error;
-type BastionError = crate::error::bastion::Error;
+type CommunityError = crate::error::community::Error;
 
 pub fn validate_username(username: &str) -> Result<(), UserError> {
     if !username.is_ascii() {
@@ -23,7 +23,7 @@ pub fn validate_username(username: &str) -> Result<(), UserError> {
     Ok(())
 }
 
-pub fn validate_message(message: &str) -> Result<(), MessageError> {
+pub fn validate_message_body(message: &str) -> Result<(), MessageError> {
     if !message.is_ascii() {
         return Err(MessageError::ASCII);
     }
@@ -39,17 +39,17 @@ pub fn validate_message(message: &str) -> Result<(), MessageError> {
     Ok(())
 }
 
-pub fn validate_bastion_name(name: &str) -> Result<(), BastionError> {
-    if !name.is_ascii() {
-        return Err(BastionError::ASCII);
+pub fn validate_community_name(community_name: &str) -> Result<(), CommunityError> {
+    if !community_name.is_ascii() {
+        return Err(CommunityError::ASCII);
     }
 
-    if name.len() < MINIMUM_BASTION_NAME_LENGTH {
-        return Err(BastionError::MinimumLength(name.len()));
+    if community_name.len() < MINIMUM_COMMUNITY_NAME_LENGTH {
+        return Err(CommunityError::MinimumLength(community_name.len()));
     }
 
-    if name.len() > MAXIMUM_BASTION_NAME_LENGTH {
-        return Err(BastionError::MaximumLength(name.len()));
+    if community_name.len() > MAXIMUM_COMMUNITY_NAME_LENGTH {
+        return Err(CommunityError::MaximumLength(community_name.len()));
     }
 
     Ok(())

@@ -1,8 +1,10 @@
 use std::fmt::Display;
 
+use bitcode::{Decode, Encode};
+
 use crate::constant::{MAXIMUM_MESSAGE_LENGTH, MINIMUM_MESSAGE_LENGTH};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub enum Error {
     MaximumLength(usize),
     MinimumLength(usize),
