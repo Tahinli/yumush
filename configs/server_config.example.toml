@@ -1,0 +1,8 @@
+[server_config]
+database_prefix = "wss"
+database_address = "127.0.0.1:8000"
+namespace = "yumush"
+database = "yumush"
+username = "yumush"
+password = "yumush"
+server_address = "127.0.0.1:2026"
