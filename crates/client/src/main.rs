@@ -1,4 +1,4 @@
-use client::gui::Nefes;
+use client::gui::Yumush;
 use gpui::{
     App, AppContext, Application, Bounds, TitlebarOptions, WindowBounds, WindowOptions, px, size,
 };
@@ -24,7 +24,7 @@ fn main() {
                 ..Default::default()
             },
             |window, cx| {
-                let view = cx.new(|cx| Nefes::new(window, cx));
+                let view = cx.new(|cx| Yumush::new(window, cx));
                 cx.new(|cx| Root::new(view, window, cx))
             },
         )

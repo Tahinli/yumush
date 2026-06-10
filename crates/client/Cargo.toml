@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 common = { workspace = true, features = ["client"] }
 tokio.workspace = true
+quinn = { workspace = true, features = ["rustls-ring", "platform-verifier"] }
 
 gpui = "0.2.2"
 gpui-component = "0.5.1"

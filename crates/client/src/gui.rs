@@ -11,13 +11,13 @@ enum Route {
     Chat,
 }
 
-pub struct Nefes {
+pub struct Yumush {
     current_route: Route,
     login: Login,
     chat: Chat,
 }
 
-impl Nefes {
+impl Yumush {
     pub fn new(window: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> Self {
         Self {
             current_route: Route::Login,
@@ -41,7 +41,7 @@ impl Nefes {
     }
 }
 
-impl Render for Nefes {
+impl Render for Yumush {
     fn render(
         &mut self,
         window: &mut gpui::Window,

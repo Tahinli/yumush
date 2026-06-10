@@ -7,7 +7,7 @@ use gpui_component::{
     notification::Notification,
 };
 
-use crate::gui::{Nefes, Route};
+use crate::gui::{Route, Yumush};
 
 pub struct Login {
     username_input: Entity<InputState>,
@@ -15,7 +15,7 @@ pub struct Login {
 }
 
 impl Login {
-    pub fn new(window: &mut Window, cx: &mut Context<Nefes>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Yumush>) -> Self {
         let username_input = cx.new(|cx| {
             let mut input_state = InputState::new(window, cx);
             input_state.set_placeholder("Username...", window, cx);
@@ -41,7 +41,7 @@ impl Login {
         self.user.clone()
     }
 
-    pub fn focus(&self, window: &mut Window, cx: &mut Context<'_, Nefes>) {
+    pub fn focus(&self, window: &mut Window, cx: &mut Context<'_, Yumush>) {
         self.username_input.update(cx, |input, cx| {
             input.focus(window, cx);
         });
@@ -49,24 +49,20 @@ impl Login {
 }
 
 fn login_action(
-    this: &mut Nefes,
+    this: &mut Yumush,
     input: &Entity<InputState>,
     window: &mut Window,
-    cx: &mut Context<'_, Nefes>,
+    cx: &mut Context<'_, Yumush>,
 ) {
+    let id = "A".to_string();
     let username = input.read(cx).text().to_string();
-    match User::new(username) {
-        Ok(user) => {
-            this.login.user = Some(user);
-            this.change_page(Route::Chat, window, cx);
-        }
-        Err(error_value) => {
-            window.push_notification(Notification::error(error_value.to_string()), cx)
-        }
-    }
+
+    let user = User::new(&id, &username);
+    this.login.user = Some(user);
+    this.change_page(Route::Chat, window, cx);
 }
 
-impl Nefes {
+impl Yumush {
     pub fn login_page(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let entity = cx.entity();
         let username_input = self.login.username_input.clone();
