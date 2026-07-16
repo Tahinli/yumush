@@ -13,7 +13,10 @@ impl Network {
         response: &Response,
         mut send_stream: SendStream,
     ) -> Result<(), Error> {
-        Ok(send_stream.write_all(&bitcode::encode(response)).await?)
+        Ok({
+            send_stream.write_all(&bitcode::encode(response)).await?;
+            send_stream.finish()?;
+        })
     }
 
     pub async fn receive_request(
@@ -34,6 +37,8 @@ impl Network {
         mut receive_stream: RecvStream,
     ) -> Result<Response, Error> {
         send_stream.write_all(&bitcode::encode(request)).await?;
+        send_stream.finish()?;
+
         let response = receive_stream.read_to_end(RESPONCE_MAX_READ_LENGHT).await?;
 
         Ok(bitcode::decode::<Response>(&response)?)
