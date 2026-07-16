@@ -14,13 +14,18 @@ pub struct TOML {
 }
 
 impl TOML {
-    pub fn naive_toml_parser(file_location: impl AsRef<Path>) -> Result<TOML, Error> {
+    pub fn naive_toml_parser_from_file(file_location: impl AsRef<Path>) -> Result<TOML, Error> {
         let mut toml_file = File::open(file_location)
             .map_err(|error_value| file_operation::Error::FileOpen(error_value.to_string()))?;
         let mut toml_ingredients = String::default();
         toml_file
             .read_to_string(&mut toml_ingredients)
             .map_err(|_| file_operation::Error::Read)?;
+
+        Self::naive_toml_parser_from_content(&toml_ingredients)
+    }
+
+    pub fn naive_toml_parser_from_content(toml_ingredients: &str) -> Result<TOML, Error> {
         let mut toml_ingredients = toml_ingredients.lines().collect::<VecDeque<&str>>();
 
         let header = toml_ingredients

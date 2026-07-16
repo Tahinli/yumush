@@ -16,6 +16,23 @@ pub mod user_community;
 pub struct Authentication(String);
 
 impl Authentication {
+    pub fn new(authentication_token: &str) -> Self {
+        Self(authentication_token.to_string())
+    }
+
+    pub fn get_authentication_token(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, Encode, Decode)]
+pub struct Deauthentication(String);
+
+impl Deauthentication {
+    pub fn new(authentication_token: &str) -> Self {
+        Self(authentication_token.to_string())
+    }
+
     pub fn get_authentication_token(&self) -> &str {
         &self.0
     }
@@ -24,6 +41,7 @@ impl Authentication {
 #[derive(Debug, Clone, Encode, Decode)]
 pub enum Request {
     Authentication(Authentication),
+    Deauthentication(Deauthentication),
     CreateUser(CreateUser),
     ReadUser(ReadUser),
     UpdateUser(UpdateUser),

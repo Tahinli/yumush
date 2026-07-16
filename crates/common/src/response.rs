@@ -9,6 +9,7 @@ pub mod user;
 #[derive(Debug, Clone, Encode, Decode)]
 pub enum Response {
     Authentication(User),
+    Deauthentication(User),
     CreateUser(User),
     ReadUser(User),
     UpdateUser(User),

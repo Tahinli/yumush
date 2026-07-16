@@ -10,9 +10,9 @@ pub struct CreateMessage {
 }
 
 impl CreateMessage {
-    pub fn new(community_id: &str, user_id: &str, message_body: &str) -> Result<Self, Error> {
-        let community_id = community_id.to_string();
+    pub fn new(user_id: &str, community_id: &str, message_body: &str) -> Result<Self, Error> {
         let user_id = user_id.to_string();
+        let community_id = community_id.to_string();
         let message_body = message_body.to_string();
         validate_message_body(&message_body)?;
 
