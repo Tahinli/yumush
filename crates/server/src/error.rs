@@ -67,9 +67,27 @@ impl From<surrealdb::Error> for Error {
     }
 }
 
+impl From<std::net::AddrParseError> for Error {
+    fn from(value: std::net::AddrParseError) -> Self {
+        Self::Common(value.into())
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Self::Common(value.into())
+    }
+}
+
 impl From<quinn::ConnectionError> for Error {
     fn from(value: quinn::ConnectionError) -> Self {
         Self::Common(common::error::network::Error::from(value).into())
+    }
+}
+
+impl From<quinn::ConnectError> for Error {
+    fn from(value: quinn::ConnectError) -> Self {
+        Self::Common(value.into())
     }
 }
 
@@ -87,6 +105,12 @@ impl From<quinn::ReadToEndError> for Error {
 
 impl From<quinn::WriteError> for Error {
     fn from(value: quinn::WriteError) -> Self {
+        Self::Common(common::error::network::Error::from(value).into())
+    }
+}
+
+impl From<quinn::ClosedStream> for Error {
+    fn from(value: quinn::ClosedStream) -> Self {
         Self::Common(common::error::network::Error::from(value).into())
     }
 }

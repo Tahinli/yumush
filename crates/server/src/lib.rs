@@ -32,7 +32,7 @@ pub struct ServerConfig {
 
 impl Default for ServerConfig {
     fn default() -> Self {
-        let mut toml = TOML::naive_toml_parser(SERVER_CONFIG_FILE_PATH).unwrap();
+        let mut toml = TOML::naive_toml_parser_from_file(SERVER_CONFIG_FILE_PATH).unwrap();
 
         Self {
             database_prefix: toml.fields.remove("database_prefix").unwrap(),
@@ -55,5 +55,8 @@ pub async fn showtime() {
     let database_connection = database_::connect(&server_config).await.unwrap();
     database_::migrate(&database_connection).await.unwrap();
     database_::health(&database_connection).await.unwrap();
-    serve(&server_config.server_address, &database_connection).await;
+
+    serve(&server_config.server_address, &database_connection)
+        .await
+        .unwrap();
 }

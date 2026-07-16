@@ -1,7 +1,7 @@
 use common::{request::Request, response::Response};
 
 use crate::{
-    authentication::authenticate,
+    authentication::{authenticate, deauthenticate},
     community::Community,
     database_::DB,
     error::Error,
@@ -21,6 +21,15 @@ pub async fn handle_request(request: Request, database_connection: &DB) -> Respo
                 .await?;
 
                 Ok(Response::Authentication(user.into()))
+            }
+            Request::Deauthentication(deauthentication) => {
+                let user = deauthenticate(
+                    deauthentication.get_authentication_token(),
+                    database_connection,
+                )
+                .await?;
+
+                Ok(Response::Deauthentication(user.into()))
             }
             Request::CreateUser(create_user) => {
                 let user = User::create(create_user.get_username(), database_connection).await?;
