@@ -8,11 +8,11 @@ use gpui_component::{
 
 use crate::gui::{Route, Yumush};
 
-pub struct Login {
+pub struct Register {
     username_input: Entity<InputState>,
 }
 
-impl Login {
+impl Register {
     pub fn new(window: &mut Window, cx: &mut Context<Yumush>) -> Self {
         let username_input = cx.new(|cx| {
             let mut input_state = InputState::new(window, cx);
@@ -24,7 +24,7 @@ impl Login {
 
         cx.subscribe_in(&username_input, window, |this, input, event, window, cx| {
             if matches!(event, InputEvent::PressEnter { .. }) {
-                login_action(this, input, window, cx);
+                register_action(this, input, window, cx);
             }
         })
         .detach();
@@ -39,7 +39,7 @@ impl Login {
     }
 }
 
-fn login_action(
+fn register_action(
     this: &mut Yumush,
     input: &Entity<InputState>,
     window: &mut Window,
@@ -49,7 +49,7 @@ fn login_action(
     let network = this.network.clone();
 
     cx.spawn_in(window, async move |this, cx| {
-        let result = network.authenticate(&username).await;
+        let result = network.create_user(&username).await;
 
         let _ = this.update_in(cx, |yumush, window, cx| match result {
             Ok(user) => {
@@ -65,32 +65,32 @@ fn login_action(
 }
 
 impl Yumush {
-    pub fn login_page(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
+    pub fn register_page(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let entity = cx.entity();
-        let username_input = self.login.username_input.clone();
-        let login_button = Button::new("login_button")
+        let username_input = self.register.username_input.clone();
+        let register_button = Button::new("register_button")
             .on_click(move |_, window, cx| {
                 entity.update(cx, |this, cx| {
-                    login_action(this, &username_input, window, cx);
+                    register_action(this, &username_input, window, cx);
                 })
             })
-            .label("Login");
+            .label("Register");
 
         let entity = cx.entity();
-        let register_page_switch_button = Button::new("register_page_switch_button")
+        let login_page_switch_button = Button::new("login_page_switch_button")
             .on_click(move |_, window, cx| {
                 entity.update(cx, |this, cx| {
-                    this.change_page(Route::Register, window, cx);
+                    this.change_page(Route::Login, window, cx);
                 })
             })
-            .label("Go to Register Page");
+            .label("Go to Login Page");
 
         div()
             .w_1_5()
             .child("Username")
-            .child(Input::new(&self.login.username_input))
-            .child(login_button)
-            .child(register_page_switch_button)
+            .child(Input::new(&self.register.username_input))
+            .child(register_button)
+            .child(login_page_switch_button)
             .into_element()
     }
 }

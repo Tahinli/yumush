@@ -1,0 +1,3 @@
+[client_config]
+server_address = "127.0.0.1:2026"
+server_name = "localhost"

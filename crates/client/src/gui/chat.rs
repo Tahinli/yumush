@@ -3,11 +3,7 @@ use gpui::{
     AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement,
     StatefulInteractiveElement, Styled, Window, div, rgb,
 };
-use gpui_component::{
-    WindowExt,
-    input::{Input, InputEvent, InputState},
-    notification::Notification,
-};
+use gpui_component::input::{Input, InputEvent, InputState};
 
 use crate::gui::Yumush;
 
@@ -35,7 +31,7 @@ impl Chat {
                 let message = Message::new(
                     "1",
                     this.chat.community.get_community_id(),
-                    this.login.get_user().unwrap().get_username(),
+                    this.get_username().unwrap(),
                     &input.read(cx).text().to_string(),
                 );
 
