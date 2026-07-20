@@ -1,6 +1,9 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use common::error::Error;
+use common::network::Network;
+use common::{community::Community, error::network, message::Message, user::User};
 use quinn::{
     Endpoint,
     crypto::rustls::QuicClientConfig,
@@ -9,8 +12,15 @@ use quinn::{
         client::danger::{ServerCertVerified, ServerCertVerifier},
     },
 };
+use tokio::sync::{mpsc, oneshot};
 
 use crate::{ClientConfig, request::ClientRequest};
+
+const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(1);
+const MAX_IDLE_TIMEOUT: Duration = Duration::from_secs(3);
+
+const CHANNEL_SIZE: usize = 32;
+const RECONNECT_DELAY: Duration = Duration::from_secs(1);
 
 pub async fn connect(server_address: &str, server_name: &str) -> Result<ClientRequest, Error> {
     let mut endpoint = Endpoint::client("0.0.0.0:0".parse()?)?;
@@ -32,16 +42,17 @@ fn config() -> quinn::ClientConfig {
         .with_custom_certificate_verifier(Arc::new(AcceptAnyCertificate(crypto_provider)))
         .with_no_client_auth();
 
-    quinn::ClientConfig::new(Arc::new(QuicClientConfig::try_from(tls_config).unwrap()))
+    let mut client_config =
+        quinn::ClientConfig::new(Arc::new(QuicClientConfig::try_from(tls_config).unwrap()));
+
+    let mut transport_config = quinn::TransportConfig::default();
+    transport_config.keep_alive_interval(Some(KEEP_ALIVE_INTERVAL));
+    transport_config.max_idle_timeout(Some(MAX_IDLE_TIMEOUT.try_into().unwrap()));
+
+    client_config.transport_config(Arc::new(transport_config));
+
+    client_config
 }
-
-use std::time::Duration;
-
-use common::{community::Community, error::network, message::Message, user::User};
-use tokio::sync::{mpsc, oneshot};
-
-const CHANNEL_SIZE: usize = 32;
-const RECONNECT_DELAY: Duration = Duration::from_secs(3);
 
 macro_rules! network_commands {
     ($($variant:ident => $method:ident($($arg:ident), *) ->  $ret:ty),* $(,)?) => {
@@ -101,6 +112,7 @@ pub enum NetworkEvent {
     Connected,
     ConnectionFailed(Error),
     Disconnected(Error),
+    MessageReceived(Message),
 }
 
 #[derive(Debug, Clone)]
@@ -137,6 +149,7 @@ async fn actor(
     mut command_receiver: mpsc::Receiver<NetworkCommand>,
     event_sender: mpsc::Sender<NetworkEvent>,
 ) {
+    let mut authentication_token: Option<String> = None;
     'session: loop {
         let client_request = loop {
             match connect(&client_config.server_address, &client_config.server_name).await {
@@ -155,14 +168,38 @@ async fn actor(
             };
         };
 
+        if let Some(authentication_token_) = &authentication_token {
+            if client_request
+                .authenticate(authentication_token_)
+                .await
+                .is_err()
+            {
+                authentication_token = None;
+            }
+        }
+
         if event_sender.send(NetworkEvent::Connected).await.is_err() {
             return;
         }
+
+        tokio::spawn(message_receive_loop(
+            client_request.clone(),
+            event_sender.clone(),
+        ));
 
         loop {
             tokio::select! {
                 command = command_receiver.recv() => match command {
                     Some(command) => {
+                        match &command {
+                            NetworkCommand::Authenticate { authentication_token: authentication_token_, .. } => {
+                                authentication_token = Some(authentication_token_.to_owned());
+                            }
+                            NetworkCommand::Deauthenticate { .. } => {
+                                authentication_token = None;
+                            }
+                            _ => {}
+                        }
                         tokio::spawn(dispatch(client_request.clone(), command));
                     }
                     None => break 'session,
@@ -175,6 +212,25 @@ async fn actor(
                     break;
                 }
             }
+        }
+    }
+}
+
+async fn message_receive_loop(
+    client_request: ClientRequest,
+    event_sender: mpsc::Sender<NetworkEvent>,
+) {
+    let Ok(mut receive_stream) = client_request.accept_unidirectional_stream().await else {
+        return;
+    };
+
+    while let Ok(message) = Network::receive_message(&mut receive_stream).await {
+        if event_sender
+            .send(NetworkEvent::MessageReceived(message))
+            .await
+            .is_err()
+        {
+            return;
         }
     }
 }

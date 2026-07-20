@@ -54,6 +54,10 @@ impl ClientRequest {
         self.connection.closed().await.into()
     }
 
+    pub async fn accept_unidirectional_stream(&self) -> Result<quinn::RecvStream, Error> {
+        Ok(self.connection.accept_uni().await?)
+    }
+
     pub async fn authenticate(&self, authentication_token: &str) -> Result<User, Error> {
         let authentication = Authentication::new(authentication_token);
         let request = Request::Authentication(authentication);

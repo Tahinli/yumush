@@ -60,7 +60,12 @@ impl Yumush {
     }
 
     fn set_user(&mut self, user: User) {
+        self.chat.push_user(&user);
         self.user = Some(user);
+    }
+
+    fn get_user(&self) -> Option<User> {
+        self.user.clone()
     }
 
     fn reset_user(&mut self) {
@@ -93,6 +98,7 @@ impl Yumush {
                 self.connected = false;
                 self.reset_user();
             }
+            NetworkEvent::MessageReceived(message) => self.chat.push_message(message),
         }
 
         cx.notify();
@@ -124,5 +130,21 @@ impl Render for Yumush {
                     }),
             )
             .child(Root::read(window, cx).notification.clone())
+            .child(
+                div()
+                    .absolute()
+                    .top_2()
+                    .right_2()
+                    .text_color(if self.connected {
+                        rgb(0x22c55e)
+                    } else {
+                        rgb(0xef4444)
+                    })
+                    .child(format!(
+                        "{:?} is {}",
+                        self.get_username(),
+                        if self.connected { "online" } else { "offline" }
+                    )),
+            )
     }
 }

@@ -1,9 +1,13 @@
-use common::{community::Community, message::Message, user::User};
+use common::{community::Community, message::Message, user::User, validate::validate_message_body};
 use gpui::{
     AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement,
     StatefulInteractiveElement, Styled, Window, div, rgb,
 };
-use gpui_component::input::{Input, InputEvent, InputState};
+use gpui_component::{
+    WindowExt,
+    input::{Input, InputEvent, InputState},
+    notification::Notification,
+};
 
 use crate::gui::Yumush;
 
@@ -23,19 +27,41 @@ impl Chat {
             input_state
         });
 
-        let community = Community::new("1", "Community");
+        let community = Community::new("oko1k3hk3r21dhqa20az", "The Community");
 
         let community = || community.clone();
         cx.subscribe_in(&message_input, window, |this, input, event, window, cx| {
             if matches!(event, InputEvent::PressEnter { .. }) {
-                let message = Message::new(
-                    "1",
-                    this.chat.community.get_community_id(),
-                    this.get_username().unwrap(),
-                    &input.read(cx).text().to_string(),
-                );
+                let message_body = input.read(cx).text().to_string();
 
-                this.chat.chat_messages.push(message);
+                if let Err(error_value) = validate_message_body(&message_body) {
+                    window.push_notification(Notification::error(error_value.to_string()), cx);
+
+                    return;
+                }
+
+                let Some(user) = this.get_user() else {
+                    return;
+                };
+
+                let network = this.network.clone();
+                let community_id = this.chat.community.get_community_id().to_string();
+
+                cx.spawn_in(window, async move |this, cx| {
+                    if let Err(error_value) = network
+                        .create_message(user.get_user_id(), &community_id, &message_body)
+                        .await
+                    {
+                        let _ = this.update_in(cx, |_, window, cx| {
+                            window.push_notification(
+                                Notification::error(error_value.to_string()),
+                                cx,
+                            );
+                        });
+                    }
+                })
+                .detach();
+
                 input.update(cx, |input_state, cx| {
                     input_state.set_value("", window, cx);
                 });
@@ -43,40 +69,10 @@ impl Chat {
         })
         .detach();
 
-        let person_1 = User::new("Ahmet", "Ahmet");
-        let person_2 = User::new("Kaan", "Kaan");
-        let message_1 = Message::new(
-            "1",
-            community().get_community_id(),
-            person_1.get_user_id(),
-            "Hello, how are you?",
-        );
-        let message_2 = Message::new(
-            "1",
-            community().get_community_id(),
-            person_2.get_user_id(),
-            "I'm doing well. How are you?",
-        );
-        let person_1 = User::new("1", "Ahmet");
-        let message_3 = Message::new(
-            "1",
-            community().get_community_id(),
-            person_1.get_username(),
-            "I'm good too. Thanks for asking!",
-        );
-        let person_2 = User::new("1", "Kaan");
-        let message_4 = Message::new(
-            "1",
-            community().get_community_id(),
-            person_2.get_username(),
-            &"A".repeat(1024),
-        );
-        let person_1 = User::new("1", "Ahmet");
-        let person_2 = User::new("1", "Kaan");
         Self {
             community: community(),
-            users: vec![person_1, person_2],
-            chat_messages: vec![message_1, message_2, message_3, message_4],
+            users: vec![],
+            chat_messages: vec![],
             message_input,
         }
     }
@@ -85,6 +81,14 @@ impl Chat {
         self.message_input.update(cx, |input, cx| {
             input.focus(window, cx);
         });
+    }
+
+    pub fn push_message(&mut self, message: Message) {
+        self.chat_messages.push(message);
+    }
+
+    pub fn push_user(&mut self, user: &User) {
+        self.users.push(user.to_owned());
     }
 }
 
