@@ -110,6 +110,12 @@ impl From<quinn::ReadToEndError> for Error {
     }
 }
 
+impl From<quinn::ReadExactError> for Error {
+    fn from(value: quinn::ReadExactError) -> Self {
+        Self::Network(value.into())
+    }
+}
+
 impl From<quinn::WriteError> for Error {
     fn from(value: quinn::WriteError) -> Self {
         Self::Network(value.into())
