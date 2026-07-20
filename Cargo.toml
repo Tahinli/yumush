@@ -14,9 +14,9 @@ incremental = false
 
 [workspace.dependencies]
 common = { path = "crates/common" }
-tokio = { version = "1.52.3", features = ["full"] }
+tokio = { version = "1.53.0", features = ["full"] }
 bitcode = "0.6.9"
-quinn = { version = "0.11.9", default-features = false, features = [
+quinn = { version = "0.11.11", default-features = false, features = [
     "runtime-tokio",
 ] }
-rustls = "0.23.40"
+rustls = "0.23.42"

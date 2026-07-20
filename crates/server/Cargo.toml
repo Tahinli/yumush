@@ -18,9 +18,9 @@ quinn = { workspace = true, features = ["rustls-aws-lc-rs"] }
 bitcode.workspace = true
 rustls.workspace = true
 
-surrealdb = { version = "3.1.3", default-features = false, features = [
+surrealdb = { version = "3.2.1", default-features = false, features = [
     "protocol-ws",
     "rustls",
     "kv-surrealkv",
 ] }
-ulid = "1.2.1"
+ulid = "3.0.0"
