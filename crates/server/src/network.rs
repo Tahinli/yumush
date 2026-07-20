@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::collections::HashMap;
 
 use common::{
     network::{AUTHENTICATION_MAX_READ_LENGHT, Network},
@@ -6,14 +6,19 @@ use common::{
     response::Response,
 };
 use quinn::{Connection, Endpoint, Incoming, RecvStream, SendStream};
-use tokio::sync::RwLock;
+use tokio::sync::mpsc;
 
 use crate::{
-    authentication::authenticate, database_::DB, error::Error, request::handle_request, user::User,
+    authentication::authenticate,
+    community::{Community, CommunityID},
+    database_::DB,
+    error::Error,
+    request::handle_request,
+    user::User,
+    user_community::is_user_in,
 };
 
-static USER_SEND_STREAM_MAP: LazyLock<RwLock<HashMap<User, SendStream>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
+const CHANNEL_LENGTH: usize = 2048;
 
 #[cfg(feature = "rcgen")]
 fn config() -> quinn::ServerConfig {
@@ -28,18 +33,49 @@ fn config() -> quinn::ServerConfig {
 pub async fn serve(server_address: &str, database_connection: &DB) -> Result<(), Error> {
     let endpoint = Endpoint::server(config(), server_address.parse()?)?;
 
+    let (user_and_send_stream_sender, user_and_send_stream_receiver) =
+        mpsc::channel(CHANNEL_LENGTH);
+    let (message_sender, message_receiver) = mpsc::channel(CHANNEL_LENGTH);
+
+    let database_connection_clone = || -> DB { database_connection.clone() };
+
+    tokio::spawn(the_actor(
+        user_and_send_stream_receiver,
+        message_receiver,
+        database_connection_clone(),
+    ));
+
     while let Some(incoming) = endpoint.accept().await {
         let database_connection = database_connection.clone();
-        tokio::spawn(handle_connection(incoming, database_connection));
+        let user_and_send_stream_sender = user_and_send_stream_sender.clone();
+        let message_sender = message_sender.clone();
+
+        tokio::spawn(handle_connection(
+            incoming,
+            user_and_send_stream_sender,
+            message_sender,
+            database_connection,
+        ));
     }
 
     Ok(())
 }
 
-async fn handle_connection(incoming: Incoming, database_connection: DB) {
+async fn handle_connection(
+    incoming: Incoming,
+    user_and_send_stream_sender: mpsc::Sender<(User, SendStream)>,
+    message_sender: mpsc::Sender<common::message::Message>,
+    database_connection: DB,
+) {
     match incoming.await {
         Ok(connection) => {
-            if let Err(error_value) = establish_connection(&connection, &database_connection).await
+            if let Err(error_value) = establish_connection(
+                &connection,
+                user_and_send_stream_sender,
+                message_sender,
+                &database_connection,
+            )
+            .await
             {
                 eprintln!("Error = Endpoint Accept | {}", error_value.to_string());
                 connection.close(0u8.into(), b"kendine iyi bak");
@@ -51,6 +87,8 @@ async fn handle_connection(incoming: Incoming, database_connection: DB) {
 
 async fn establish_connection(
     connection: &Connection,
+    user_and_send_stream_sender: mpsc::Sender<(User, SendStream)>,
+    message_sender: mpsc::Sender<common::message::Message>,
     database_connection: &DB,
 ) -> Result<(), Error> {
     let (send_stream, receive_stream) = connection.accept_bi().await?;
@@ -65,25 +103,40 @@ async fn establish_connection(
             user.get_id().as_str(),
             user.get_username().as_str(),
         ));
-        tokio::spawn(listen(connection.clone(), database_connection.clone()));
+        tokio::spawn(listen(
+            connection.clone(),
+            message_sender,
+            database_connection.clone(),
+        ));
 
         Network::send_response(&response, send_stream).await?;
 
         let send_stream = connection.open_uni().await?;
-        USER_SEND_STREAM_MAP.write().await.insert(user, send_stream);
+        let _ = user_and_send_stream_sender.send((user, send_stream)).await;
+
         Ok(())
     } else {
         Err(Error::Common(common::error::Error::Authenticate))
     }
 }
 
-async fn listen(connection: Connection, database_connection: DB) {
+async fn listen(
+    connection: Connection,
+    message_sender: mpsc::Sender<common::message::Message>,
+    database_connection: DB,
+) {
     let read_and_answer = async |send_stream: SendStream,
                                  receive_stream: RecvStream,
+                                 message_sender: mpsc::Sender<common::message::Message>,
                                  database_connection: DB|
            -> Result<(), Error> {
         let request = Network::receive_request(receive_stream, None).await?;
         let response = handle_request(request, &database_connection).await;
+
+        if let Response::CreateMessage(message) = &response {
+            let _ = message_sender.send(message.to_owned()).await;
+        }
+
         Network::send_response(&response, send_stream).await?;
 
         Ok(())
@@ -94,7 +147,50 @@ async fn listen(connection: Connection, database_connection: DB) {
         tokio::spawn(read_and_answer(
             send_stream,
             receive_stream,
+            message_sender.clone(),
             database_connection,
         ));
+    }
+}
+
+async fn the_actor(
+    mut user_and_send_stream_receiver: mpsc::Receiver<(User, SendStream)>,
+    mut message_receiver: mpsc::Receiver<common::message::Message>,
+    database_connection: DB,
+) {
+    let mut user_stream_map = HashMap::new();
+
+    loop {
+        tokio::select! {
+            user_and_send_stream = user_and_send_stream_receiver.recv() => match user_and_send_stream {
+                Some((user, send_stream)) => {
+                    user_stream_map.insert(user, send_stream);
+                },
+                None => return,
+            },
+            message = message_receiver.recv() => match message {
+                Some(message) => {
+                    let Ok(community) = Community::read(&CommunityID::from(message.get_community_id()), &database_connection).await else {
+                        continue;
+                    };
+
+                    let old_map = std::mem::take(&mut user_stream_map);
+
+                    for (user, mut send_stream) in old_map {
+                        let keep = if is_user_in(&user, &community, &database_connection).await.unwrap_or(false) {
+                            Network::send_message(&message, &mut send_stream).await.is_ok()
+                        } else {
+                            true
+                        };
+
+                        if keep {
+                            user_stream_map.insert(user, send_stream);
+                        }
+                    }
+
+                },
+                None => return,
+            }
+        }
     }
 }

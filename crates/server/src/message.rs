@@ -167,6 +167,19 @@ impl Message {
     }
 }
 
+impl ToOwned for Message {
+    type Owned = Self;
+
+    fn to_owned(&self) -> Self::Owned {
+        Self {
+            id: self.id.to_owned(),
+            user_id: self.user_id.to_owned(),
+            community_id: self.community_id.to_owned(),
+            message_body: self.message_body.to_owned(),
+        }
+    }
+}
+
 impl Into<common::message::Message> for Message {
     fn into(self) -> common::message::Message {
         common::message::Message::new(
