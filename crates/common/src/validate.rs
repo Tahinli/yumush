@@ -24,10 +24,6 @@ pub fn validate_username(username: &str) -> Result<(), UserError> {
 }
 
 pub fn validate_message_body(message: &str) -> Result<(), MessageError> {
-    if !message.is_ascii() {
-        return Err(MessageError::ASCII);
-    }
-
     if message.len() < MINIMUM_MESSAGE_LENGTH {
         return Err(MessageError::MinimumLength(message.len()));
     }
