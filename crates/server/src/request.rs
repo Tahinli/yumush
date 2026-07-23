@@ -7,7 +7,7 @@ use crate::{
     error::Error,
     message::Message,
     user::User,
-    user_community::{JoinCommunity, LeaveCommunity},
+    user_community::{JoinCommunity, LeaveCommunity, communitys_of, is_user_in, users_in},
 };
 
 pub async fn handle_request(request: Request, database_connection: &DB) -> Response {
@@ -157,6 +157,44 @@ pub async fn handle_request(request: Request, database_connection: &DB) -> Respo
                 .await?;
 
                 Ok(Response::LeaveCommunity)
+            }
+            Request::IsUserIn(is_user_in_) => {
+                let user =
+                    User::read(&is_user_in_.get_user_id().into(), database_connection).await?;
+                let community =
+                    Community::read(&is_user_in_.get_community_id().into(), database_connection)
+                        .await?;
+
+                let is_user_in = is_user_in(&user, &community, database_connection).await?;
+
+                Ok(Response::IsUserIn(is_user_in))
+            }
+            Request::UsersIn(users_in_) => {
+                let community =
+                    Community::read(&users_in_.get_community_id().into(), database_connection)
+                        .await?;
+
+                let users_in = users_in(&community, database_connection).await?;
+
+                Ok(Response::UsersIn(
+                    users_in
+                        .iter()
+                        .map(|user_id| user_id.as_str().to_string())
+                        .collect(),
+                ))
+            }
+            Request::CommunityOf(community_of_) => {
+                let user =
+                    User::read(&community_of_.get_user_id().into(), database_connection).await?;
+
+                let community_of = communitys_of(&user, database_connection).await?;
+
+                Ok(Response::CommunityOf(
+                    community_of
+                        .iter()
+                        .map(|community_id| community_id.as_str().to_string())
+                        .collect(),
+                ))
             }
         }
     };
