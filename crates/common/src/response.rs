@@ -24,5 +24,8 @@ pub enum Response {
     DeleteMessage(Message),
     JoinCommunity,
     LeaveCommunity,
+    IsUserIn(bool),
+    UsersIn(Vec<String>),
+    CommunityOf(Vec<String>),
     Error(Error),
 }

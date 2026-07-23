@@ -4,7 +4,7 @@ use crate::request::{
     community::{CreateCommunity, DeleteCommunity, ReadCommunity, UpdateCommunity},
     message::{CreateMessage, DeleteMessage, ReadMessage, UpdateMessage},
     user::{CreateUser, DeleteUser, ReadUser, UpdateUser},
-    user_community::{JoinCommunity, LeaveCommunity},
+    user_community::{CommunityOf, IsUserIn, JoinCommunity, LeaveCommunity, UsersIn},
 };
 
 pub mod community;
@@ -56,4 +56,7 @@ pub enum Request {
     DeleteMessage(DeleteMessage),
     JoinCommunity(JoinCommunity),
     LeaveCommunity(LeaveCommunity),
+    IsUserIn(IsUserIn),
+    UsersIn(UsersIn),
+    CommunityOf(CommunityOf),
 }
