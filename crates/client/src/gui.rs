@@ -35,10 +35,10 @@ impl Yumush {
         window: &mut gpui::Window,
         cx: &mut gpui::Context<Self>,
     ) -> Self {
-        cx.spawn(async move |this, cx| {
+        cx.spawn_in(window, async move |this, cx| {
             while let Some(event) = network_event_receiver.recv().await {
-                let updated = this.update(cx, |yumush, cx| {
-                    yumush.handle_network_event(event, cx);
+                let updated = this.update_in(cx, |yumush, window, cx| {
+                    yumush.handle_network_event(event, window, cx);
                 });
 
                 if updated.is_err() {
@@ -60,7 +60,6 @@ impl Yumush {
     }
 
     fn set_user(&mut self, user: User) {
-        self.chat.push_user(&user);
         self.user = Some(user);
     }
 
@@ -70,6 +69,14 @@ impl Yumush {
 
     fn reset_user(&mut self) {
         self.user = None;
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.connected
+    }
+
+    pub fn is_logged_in(&self) -> bool {
+        self.user.is_some()
     }
 
     fn get_username(&self) -> Option<&str> {
@@ -83,6 +90,7 @@ impl Yumush {
         cx: &mut gpui::Context<Self>,
     ) {
         self.current_route = new_route;
+        cx.notify();
 
         match self.current_route {
             Route::Register => self.register.focus(window, cx),
@@ -91,12 +99,26 @@ impl Yumush {
         }
     }
 
-    fn handle_network_event(&mut self, event: NetworkEvent, cx: &mut gpui::Context<Self>) {
+    fn handle_network_event(
+        &mut self,
+        event: NetworkEvent,
+        window: &mut gpui::Window,
+        cx: &mut gpui::Context<Self>,
+    ) {
         match event {
-            NetworkEvent::Connected => self.connected = true,
+            NetworkEvent::Connected(user) => {
+                self.connected = true;
+                match user {
+                    Some(user) => self.set_user(user),
+                    None if self.is_logged_in() => {
+                        self.reset_user();
+                        self.change_page(Route::Login, window, cx);
+                    }
+                    None => {}
+                }
+            }
             NetworkEvent::ConnectionFailed(_) | NetworkEvent::Disconnected(_) => {
                 self.connected = false;
-                self.reset_user();
             }
             NetworkEvent::MessageReceived(message) => self.chat.push_message(message),
         }
@@ -126,7 +148,7 @@ impl Render for Yumush {
                     .child(match self.current_route {
                         Route::Register => self.register_page(cx).into_any_element(),
                         Route::Login => self.login_page(cx).into_any_element(),
-                        Route::Chat => self.chat_page().into_any_element(),
+                        Route::Chat => self.chat_page(cx).into_any_element(),
                     }),
             )
             .child(Root::read(window, cx).notification.clone())

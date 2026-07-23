@@ -12,7 +12,8 @@ use gpui_component::{
 use crate::gui::Yumush;
 
 pub struct Chat {
-    community: Community,
+    communities: Vec<Community>,
+    selected_community: Option<String>,
     users: Vec<User>,
     chat_messages: Vec<Message>,
     message_input: Entity<InputState>,
@@ -27,9 +28,6 @@ impl Chat {
             input_state
         });
 
-        let community = Community::new("oko1k3hk3r21dhqa20az", "The Community");
-
-        let community = || community.clone();
         cx.subscribe_in(&message_input, window, |this, input, event, window, cx| {
             if matches!(event, InputEvent::PressEnter { .. }) {
                 let message_body = input.read(cx).text().to_string();
@@ -45,7 +43,10 @@ impl Chat {
                 };
 
                 let network = this.network.clone();
-                let community_id = this.chat.community.get_community_id().to_string();
+                let Some(community_id) = this.chat.selected_community.clone() else {
+                    window.push_notification(Notification::error("No Community Selected"), cx);
+                    return;
+                };
 
                 cx.spawn_in(window, async move |this, cx| {
                     if let Err(error_value) = network
@@ -70,7 +71,8 @@ impl Chat {
         .detach();
 
         Self {
-            community: community(),
+            communities: vec![],
+            selected_community: None,
             users: vec![],
             chat_messages: vec![],
             message_input,
@@ -87,17 +89,76 @@ impl Chat {
         self.chat_messages.push(message);
     }
 
-    pub fn push_user(&mut self, user: &User) {
-        self.users.push(user.to_owned());
+    pub fn update_user_list(&mut self, users: Vec<User>) {
+        self.users = users;
+    }
+
+    pub fn update_community_list(&mut self, communities: Vec<Community>) {
+        if self.selected_community.is_none() {
+            self.selected_community = communities
+                .first()
+                .map(|community| community.get_community_id().to_string());
+        }
+
+        self.communities = communities;
     }
 }
 
 impl Yumush {
-    pub fn chat_page(&self) -> impl IntoElement {
+    pub fn chat_page(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let entity = cx.entity();
         div()
             .flex()
             .flex_row()
             .size_full()
+            .child(
+                div()
+                    .id("community_list")
+                    .h_full()
+                    .flex()
+                    .flex_col()
+                    .flex_shrink_0()
+                    .w_1_5()
+                    .border_r_1()
+                    .border_color(rgb(0x2f3136))
+                    .bg(rgb(0x2b2d31))
+                    .p_2()
+                    .gap_1()
+                    .child(
+                        div()
+                            .text_color(rgb(0x949ba4))
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child("Communities"),
+                    )
+                    .children(self.chat.communities.iter().enumerate().map(
+                        |(index, community)| {
+                            let community_id = community.get_community_id().to_string();
+                            let selected =
+                                self.chat.selected_community.as_deref() == Some(&community_id);
+                            let entity = entity.clone();
+
+                            div()
+                                .id(("community", index))
+                                .p_1()
+                                .cursor_pointer()
+                                .bg(if selected {
+                                    rgb(0x404249)
+                                } else {
+                                    rgb(0x2b2d31)
+                                })
+                                .child(community.get_community_name().to_string())
+                                .on_click(move |_, window, cx| {
+                                    entity.update(cx, |yumush, cx| {
+                                        yumush.chat.selected_community =
+                                            Some(community_id.to_owned());
+                                        yumush.chat.update_user_list(vec![]);
+                                        yumush.get_chat_users(window, cx);
+                                        cx.notify();
+                                    })
+                                })
+                        },
+                    )),
+            )
             .child(
                 div()
                     .flex()
@@ -114,7 +175,16 @@ impl Yumush {
                             .overflow_y_scroll()
                             .p_2()
                             .gap_1()
-                            .children(self.chat.chat_messages.iter().map(render_message)),
+                            .children(
+                                self.chat
+                                    .chat_messages
+                                    .iter()
+                                    .filter(|message| {
+                                        Some(message.get_community_id())
+                                            == self.chat.selected_community.as_deref()
+                                    })
+                                    .map(|message| render_message(message, &self.chat.users)),
+                            ),
                     )
                     .child(
                         div()
@@ -151,9 +221,82 @@ impl Yumush {
                     ),
             )
     }
+
+    pub fn get_chat_users(&self, window: &mut Window, cx: &mut Context<Self>) {
+        let network = self.network.clone();
+
+        let Some(community_id) = self.chat.selected_community.to_owned() else {
+            return;
+        };
+
+        cx.spawn_in(window, async move |this, cx| {
+            let user_ids = match network.users_in(&community_id).await {
+                Ok(user_ids) => user_ids,
+                Err(error_value) => {
+                    let _ = this.update_in(cx, |_, window, cx| {
+                        window.push_notification(Notification::error(error_value.to_string()), cx);
+                    });
+
+                    return;
+                }
+            };
+
+            let mut users = Vec::with_capacity(user_ids.len());
+            for user_id in &user_ids {
+                if let Ok(user) = network.read_user(user_id).await {
+                    users.push(user);
+                }
+            }
+
+            let _ = this.update(cx, |yumush, cx| {
+                yumush.chat.update_user_list(users);
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    pub fn get_communities(&self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(user) = self.get_user() else {
+            return;
+        };
+
+        let network = self.network.clone();
+
+        cx.spawn_in(window, async move |this, cx| {
+            let community_ids = match network.community_of(user.get_user_id()).await {
+                Ok(community_ids) => community_ids,
+                Err(error_value) => {
+                    let _ = this.update_in(cx, |_, window, cx| {
+                        window.push_notification(Notification::error(error_value.to_string()), cx);
+                    });
+
+                    return;
+                }
+            };
+
+            let mut communities = Vec::with_capacity(community_ids.len());
+            for community_id in community_ids {
+                if let Ok(community) = network.read_community(&community_id).await {
+                    communities.push(community);
+                }
+            }
+
+            let _ = this.update(cx, |yumush, cx| {
+                yumush.chat.update_community_list(communities);
+                cx.notify();
+            });
+        })
+        .detach();
+    }
 }
 
-fn render_message(message: &Message) -> impl IntoElement {
+fn render_message(message: &Message, users: &[User]) -> impl IntoElement {
+    let username = users
+        .iter()
+        .find(|user| user.get_user_id() == message.get_user_id())
+        .map(User::get_username)
+        .unwrap_or(message.get_user_id());
     div()
         .flex()
         .flex_col()
@@ -162,7 +305,7 @@ fn render_message(message: &Message) -> impl IntoElement {
             div()
                 .text_color(rgb(0x7289da))
                 .font_weight(FontWeight::BOLD)
-                .child(message.get_user_id().to_string()),
+                .child(username.to_string()),
         )
         .child(div().pl_2().child(message.get_message_body().to_string()))
 }

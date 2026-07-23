@@ -55,6 +55,7 @@ fn login_action(
             Ok(user) => {
                 yumush.set_user(user);
                 yumush.change_page(Route::Chat, window, cx);
+                yumush.time_based_repetitive_checks_after_login(window, cx);
             }
             Err(error_value) => {
                 window.push_notification(Notification::error(error_value.to_string()), cx);

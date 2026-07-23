@@ -1,5 +1,6 @@
 use common::utils::TOML;
 
+pub mod event;
 pub mod gui;
 pub mod network;
 mod request;
