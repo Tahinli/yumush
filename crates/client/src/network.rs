@@ -104,12 +104,15 @@ network_commands! {
     UpdateMessage => update_message(message_id, message_body) -> Message,
     DeleteMessage => delete_message(message_id) -> Message,
     JoinCommunity => join_community(user_id, community_id) -> (),
-    LeaveCommunity => leave_community(user_id, community_id) -> ()
+    LeaveCommunity => leave_community(user_id, community_id) -> (),
+    IsUserIn => is_user_in(user_id, community_id) -> bool,
+    UsersIn => users_in(community_id) -> Vec<String>,
+    CommunityOf => community_of(user_id) -> Vec<String>,
 }
 
 #[derive(Debug)]
 pub enum NetworkEvent {
-    Connected,
+    Connected(Option<User>),
     ConnectionFailed(Error),
     Disconnected(Error),
     MessageReceived(Message),
@@ -168,17 +171,19 @@ async fn actor(
             };
         };
 
+        let mut user = None;
         if let Some(authentication_token_) = &authentication_token {
-            if client_request
-                .authenticate(authentication_token_)
-                .await
-                .is_err()
-            {
-                authentication_token = None;
+            match client_request.authenticate(authentication_token_).await {
+                Ok(user_) => user = Some(user_),
+                Err(_) => authentication_token = None,
             }
         }
 
-        if event_sender.send(NetworkEvent::Connected).await.is_err() {
+        if event_sender
+            .send(NetworkEvent::Connected(user))
+            .await
+            .is_err()
+        {
             return;
         }
 

@@ -8,7 +8,7 @@ use common::{
         community::{CreateCommunity, DeleteCommunity, ReadCommunity, UpdateCommunity},
         message::{CreateMessage, DeleteMessage, ReadMessage, UpdateMessage},
         user::{CreateUser, DeleteUser, ReadUser, UpdateUser},
-        user_community::{JoinCommunity, LeaveCommunity},
+        user_community::{CommunityOf, IsUserIn, JoinCommunity, LeaveCommunity, UsersIn},
     },
     response::Response,
     user::User,
@@ -227,6 +227,31 @@ impl ClientRequest {
         send_request_receive_response_then_classify!(
             @unit request,
             Response::LeaveCommunity,
+            self.connection
+        )
+    }
+
+    pub async fn is_user_in(&self, user_id: &str, community_id: &str) -> Result<bool, Error> {
+        let is_user_in = IsUserIn::new(user_id, community_id);
+        let request = Request::IsUserIn(is_user_in);
+
+        send_request_receive_response_then_classify!(request, Response::IsUserIn, self.connection)
+    }
+
+    pub async fn users_in(&self, community_id: &str) -> Result<Vec<String>, Error> {
+        let users_in = UsersIn::new(community_id);
+        let request = Request::UsersIn(users_in);
+
+        send_request_receive_response_then_classify!(request, Response::UsersIn, self.connection)
+    }
+
+    pub async fn community_of(&self, user_id: &str) -> Result<Vec<String>, Error> {
+        let community_of = CommunityOf::new(user_id);
+        let request = Request::CommunityOf(community_of);
+
+        send_request_receive_response_then_classify!(
+            request,
+            Response::CommunityOf,
             self.connection
         )
     }
