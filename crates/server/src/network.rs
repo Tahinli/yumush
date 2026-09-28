@@ -7,6 +7,7 @@ use common::{
 };
 use quinn::{Connection, Endpoint, Incoming, RecvStream, SendStream};
 use tokio::sync::mpsc;
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 
 use crate::{
     authentication::authenticate,
@@ -161,43 +162,55 @@ async fn listen(
     }
 }
 
+enum Event {
+    Joined(User, SendStream),
+    Sent(common::message::Message),
+}
+
 async fn the_actor(
-    mut user_and_send_stream_receiver: mpsc::Receiver<(User, SendStream)>,
-    mut message_receiver: mpsc::Receiver<common::message::Message>,
+    user_and_send_stream_receiver: mpsc::Receiver<(User, SendStream)>,
+    message_receiver: mpsc::Receiver<common::message::Message>,
     database_connection: DB,
 ) {
     let mut user_stream_map = HashMap::new();
 
-    loop {
-        tokio::select! {
-            user_and_send_stream = user_and_send_stream_receiver.recv() => match user_and_send_stream {
-                Some((user, send_stream)) => {
-                    user_stream_map.insert(user, send_stream);
-                },
-                None => return,
-            },
-            message = message_receiver.recv() => match message {
-                Some(message) => {
-                    let Ok(community) = Community::read(&CommunityID::from(message.get_community_id()), &database_connection).await else {
-                        continue;
+    let mut events = ReceiverStream::new(user_and_send_stream_receiver)
+        .map(|(user, send_stream)| Event::Joined(user, send_stream))
+        .merge(ReceiverStream::new(message_receiver).map(Event::Sent));
+
+    while let Some(event) = events.next().await {
+        match event {
+            Event::Joined(user, send_stream) => {
+                user_stream_map.insert(user, send_stream);
+            }
+            Event::Sent(message) => {
+                let Ok(community) = Community::read(
+                    &CommunityID::from(message.get_community_id()),
+                    &database_connection,
+                )
+                .await
+                else {
+                    continue;
+                };
+
+                let old_map = std::mem::take(&mut user_stream_map);
+
+                for (user, mut send_stream) in old_map {
+                    let keep = if is_user_in(&user, &community, &database_connection)
+                        .await
+                        .unwrap_or(false)
+                    {
+                        Network::send_message(&message, &mut send_stream)
+                            .await
+                            .is_ok()
+                    } else {
+                        true
                     };
 
-                    let old_map = std::mem::take(&mut user_stream_map);
-
-                    for (user, mut send_stream) in old_map {
-                        let keep = if is_user_in(&user, &community, &database_connection).await.unwrap_or(false) {
-                            Network::send_message(&message, &mut send_stream).await.is_ok()
-                        } else {
-                            true
-                        };
-
-                        if keep {
-                            user_stream_map.insert(user, send_stream);
-                        }
+                    if keep {
+                        user_stream_map.insert(user, send_stream);
                     }
-
-                },
-                None => return,
+                }
             }
         }
     }
