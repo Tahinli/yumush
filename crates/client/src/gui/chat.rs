@@ -5,15 +5,16 @@ use common::{
     user::User,
     validate::{validate_community_name, validate_message_body},
 };
-use gpui::{
+use gpui_kit::{
     AppContext, Context, Entity, FontWeight, InteractiveElement, IntoElement, ParentElement,
-    StatefulInteractiveElement, Styled, Window, div, rgb,
-};
-use gpui_component::{
-    WindowExt,
-    button::Button,
-    input::{Input, InputEvent, InputState},
-    notification::Notification,
+    StatefulInteractiveElement, Styled, Window,
+    component::{
+        WindowExt,
+        button::Button,
+        input::{Input, InputEvent, InputState},
+        notification::Notification,
+    },
+    div, rgb,
 };
 
 use crate::gui::Yumush;

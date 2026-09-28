@@ -1,6 +1,9 @@
 use common::user::User;
-use gpui::{IntoElement, ParentElement, Render, Styled, div, rgb};
-use gpui_component::{ActiveTheme, Root, WindowExt, button::Button, notification::Notification};
+use gpui_kit::{
+    Context, IntoElement, ParentElement, Render, Styled, Window,
+    component::{ActiveTheme, Root, WindowExt, button::Button, notification::Notification},
+    div, rgb,
+};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -32,8 +35,8 @@ impl Yumush {
     pub fn new(
         network: NetworkHandle,
         mut network_event_receiver: mpsc::Receiver<NetworkEvent>,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
     ) -> Self {
         cx.spawn_in(window, async move |this, cx| {
             while let Some(event) = network_event_receiver.recv().await {
@@ -83,7 +86,7 @@ impl Yumush {
         self.user.as_ref().map(|user| user.get_username())
     }
 
-    fn logout(&mut self, window: &mut gpui::Window, cx: &mut gpui::Context<Self>) {
+    fn logout(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(user) = self.get_user() else {
             return;
         };
@@ -103,12 +106,7 @@ impl Yumush {
         .detach();
     }
 
-    fn change_page(
-        &mut self,
-        new_route: Route,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
-    ) {
+    fn change_page(&mut self, new_route: Route, window: &mut Window, cx: &mut Context<Self>) {
         self.current_route = new_route;
         cx.notify();
 
@@ -122,8 +120,8 @@ impl Yumush {
     fn handle_network_event(
         &mut self,
         event: NetworkEvent,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
     ) {
         match event {
             NetworkEvent::Connected(user) => {
@@ -148,11 +146,7 @@ impl Yumush {
 }
 
 impl Render for Yumush {
-    fn render(
-        &mut self,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
-    ) -> impl gpui::IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
             .relative()

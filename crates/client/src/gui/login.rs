@@ -1,9 +1,12 @@
-use gpui::{AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window, div};
-use gpui_component::{
-    WindowExt,
-    button::Button,
-    input::{Input, InputEvent, InputState},
-    notification::Notification,
+use gpui_kit::{
+    AppContext, Context, Entity, IntoElement, ParentElement, Styled, Window,
+    component::{
+        WindowExt,
+        button::Button,
+        input::{Input, InputEvent, InputState},
+        notification::Notification,
+    },
+    div,
 };
 
 use crate::gui::{Route, Yumush};

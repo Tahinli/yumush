@@ -1,14 +1,16 @@
 use client::{gui::Yumush, network, ClientConfig, NAME};
-use gpui::{px, size, App, AppContext, Bounds, TitlebarOptions, WindowBounds, WindowOptions};
-use gpui_component::Root;
+use gpui_kit::{
+    application, component::Root, init, px, size, App, AppContext, Bounds, TitlebarOptions,
+    WindowBounds, WindowOptions,
+};
 
 fn main() {
     println!("Hello, world!");
 
     let (network_handle, network_event_receiver) = network::start(ClientConfig::default());
 
-    gpui_platform::application().run(|cx: &mut App| {
-        gpui_component::init(cx);
+    application().run(|cx: &mut App| {
+        init(cx);
 
         let window_bounds = Bounds::centered(None, size(px(800.0), px(600.0)), cx);
 
