@@ -1,7 +1,5 @@
-use client::{ClientConfig, NAME, gui::Yumush, network};
-use gpui::{
-    App, AppContext, Application, Bounds, TitlebarOptions, WindowBounds, WindowOptions, px, size,
-};
+use client::{gui::Yumush, network, ClientConfig, NAME};
+use gpui::{px, size, App, AppContext, Bounds, TitlebarOptions, WindowBounds, WindowOptions};
 use gpui_component::Root;
 
 fn main() {
@@ -9,7 +7,7 @@ fn main() {
 
     let (network_handle, network_event_receiver) = network::start(ClientConfig::default());
 
-    Application::new().run(|cx: &mut App| {
+    gpui_platform::application().run(|cx: &mut App| {
         gpui_component::init(cx);
 
         let window_bounds = Bounds::centered(None, size(px(800.0), px(600.0)), cx);

@@ -1,6 +1,6 @@
 use common::user::User;
 use gpui::{IntoElement, ParentElement, Render, Styled, div, rgb};
-use gpui_component::{Root, WindowExt, button::Button, notification::Notification};
+use gpui_component::{ActiveTheme, Root, WindowExt, button::Button, notification::Notification};
 use tokio::sync::mpsc;
 
 use crate::{
@@ -164,7 +164,7 @@ impl Render for Yumush {
                     .items_center()
                     .size_full()
                     .bg(rgb(0x1e1e1e))
-                    .text_color(rgb(0xffffff))
+                    .text_color(cx.theme().foreground)
                     .child(match self.current_route {
                         Route::Register => self.register_page(cx).into_any_element(),
                         Route::Login => self.login_page(cx).into_any_element(),
