@@ -8,4 +8,4 @@ common = { workspace = true, features = ["client"] }
 tokio.workspace = true
 quinn = { workspace = true, features = ["rustls-ring", "platform-verifier"] }
 
-gpui-kit = "0.6.6"
+gpui-kit = "0.7.0"

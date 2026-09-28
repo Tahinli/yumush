@@ -1,7 +1,7 @@
 use common::user::User;
 use gpui_kit::{
     Context, IntoElement, ParentElement, Render, Styled, Window,
-    component::{ActiveTheme, Root, WindowExt, button::Button, notification::Notification},
+    component::{ActiveTheme, WindowExt, button::Button, notification::Notification},
     div, rgb,
 };
 use tokio::sync::mpsc;
@@ -146,7 +146,7 @@ impl Yumush {
 }
 
 impl Render for Yumush {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
             .relative()
@@ -165,7 +165,6 @@ impl Render for Yumush {
                         Route::Chat => self.chat_page(cx).into_any_element(),
                     }),
             )
-            .child(Root::read(window, cx).notification.clone())
             .child(
                 div()
                     .absolute()
